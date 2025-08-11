@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MOAP Test</title>
+<body style="font:16px system-ui;background:#111;color:#eee;display:grid;place-items:center;height:100vh">
+  <div>
+    <p>JS is working.</p>
+    <button id="b">Click me</button>
+    <p id="s">state: off</p>
+  </div>
+  <script>
+    var on = false;
+    document.getElementById('b').onclick = function(){
+      on = !on;
+      document.getElementById('s').textContent = 'state: ' + (on ? 'on' : 'off');
+    };
+  </script>
+</body>
