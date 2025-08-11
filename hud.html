@@ -1,179 +1,84 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mentor HUD</title>
-<style>
-  :root{
-    --bg:#101216; --panel:#171a20; --panelSoft:#1d2129; --ink:#e9edf3;
-    --muted:#aab4c0; --ok:#2ecc71; --warn:#e67e22; --bad:#e74c3c; --accent:#5b8def;
-    --ring:#334;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
-  body{
-    background:var(--bg);
-    color:var(--ink);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    display:flex; align-items:center; justify-content:center;
-  }
-  /* Root HUD card */
-  .hud{ width: 100%; height: 100%; max-width: 420px; max-height: 280px; }
-  .card{
-    width:100%; height:100%;
-    background:linear-gradient(180deg, var(--panel), var(--panelSoft));
-    border:1px solid #222a;
-    border-radius:14px; box-shadow: 0 8px 24px #0009, inset 0 1px 0 #fff1;
-    display:grid; grid-template-rows:auto 1fr auto; overflow:hidden;
-  }
-  .bar{
-    display:flex; align-items:center; gap:.5rem; padding:.5rem .7rem;
-    border-bottom:1px solid #222a; background:#0e1117;
-  }
-  .title{ font-weight:600; letter-spacing:.2px; }
-  .spacer{ flex:1 }
-  .chip{
-    font-size:.78rem; padding:.15rem .5rem; border-radius:999px;
-    border:1px solid #263041; background:#12161d; color:var(--muted);
-  }
-  .chip.ok{ color:#bff5d3; border-color:#285d3e; background:#102216; }
-  .chip.off{ color:#f5c8c8; border-color:#59303a; background:#241015; }
-  .btn{
-    appearance:none; border:1px solid #2b3344; background:#161b23; color:var(--ink);
-    border-radius:10px; padding:.45rem .7rem; font:600 .9rem/1 system-ui, sans-serif;
-    cursor:pointer; transition: transform .05s ease, background .15s ease, border-color .15s ease;
-  }
-  .btn:active{ transform: translateY(1px); }
-  .btn.ghost{ background:#11151c; border-color:#222a; color:var(--muted); }
-  .btn.ok{ border-color:#2d5; }
-  .btn.bad{ border-color:#e55; }
-  .btn.accent{ border-color:#5b8def55; }
-  .btn.small{ padding:.3rem .55rem; font-size:.82rem; }
-  .row{ display:flex; gap:.5rem; align-items:center; }
-  .pad{ padding:.7rem; }
-  .messageWrap{
-    height:100%; border-top:1px solid #222a; border-bottom:1px solid #222a;
-    background:#0f131a; padding:.6rem .7rem .8rem;
-  }
-  .from{ font-size:.85rem; color:var(--muted); margin-bottom:.35rem; }
-  .msgBox{
-    height:100%; border:1px solid #263041; background:#0c1016; border-radius:10px;
-    padding:.6rem .7rem; line-height:1.35; overflow-y:auto;
-  }
-  /* Minimised state layout */
-  .min .card{ grid-template-rows:1fr; place-items:center; }
-  .min .messageWrap, .min .footer, .min .title, .min .from { display:none; }
-  .min .minibar{
-    width:100%; height:100%; display:grid; place-items:center;
-    padding:.8rem; gap:.6rem;
-  }
-  .min .minibox{
-    width:92%; height:72%;
-    border:1px dashed #2b3344; border-radius:12px; display:grid; place-items:center;
-    background: repeating-linear-gradient(135deg, #0f141b, #0f141b 14px, #101720 14px, #101720 28px);
-  }
-  .min .alertPulse{
-    animation: pulse 1s ease-in-out infinite;
-    box-shadow: 0 0 0 3px #0000, inset 0 0 0 1px #000;
-  }
-  .min .hint{ font-size:.9rem; color:var(--muted); }
-  @keyframes pulse{
-    0%{ outline:2px solid #0000; background:#101720; }
-    50%{ outline:2px solid var(--warn); background:#1b1d0f; }
-    100%{ outline:2px solid #0000; background:#101720; }
-  }
-  /* Subtle focus ring for keyboard/mouse */
-  .btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
-</style>
-</head>
-<body>
-<div id="HUD" class="hud min"><!-- add "max" class for maximised -->
-  <div class="card">
-    <!-- HEADER (only visible in maximised) -->
-    <div class="bar header">
-      <div class="title">Mentor Assist</div>
-      <span id="notifyChip" class="chip off">Notify: OFF</span>
-      <div class="spacer"></div>
-      <button id="btnMinimise" class="btn small ghost" title="Minimise">▁</button>
-    </div>
-
-    <!-- MESSAGE AREA -->
-    <div class="messageWrap">
-      <div id="from" class="from">From: —</div>
-      <div id="msg" class="msgBox" tabindex="0">No active request.</div>
-    </div>
-
-    <!-- FOOTER (maximised controls) -->
-    <div class="pad footer">
-      <div class="row">
-        <button id="btnAccept" class="btn ok">Accept</button>
-        <button id="btnDecline" class="btn bad">Decline</button>
-        <div class="spacer"></div>
-        <button id="btnNotify" class="btn small accent">Turn ON</button>
-        <button id="btnMaximise" class="btn small ghost" title="Maximise" style="display:none">▢</button>
-      </div>
-    </div>
-
-    <!-- MINIMISED SURFACE -->
-    <div class="minibar">
-      <div id="minibox" class="minibox">
-        <div class="row" style="flex-direction:column">
-          <div id="miniStatus" class="hint">No messages</div>
-          <div class="row">
-            <button id="btnMiniMax" class="btn">Open</button>
-            <button id="btnMiniNotify" class="btn ghost">Notify OFF</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 (function(){
-  const root = document.getElementById('HUD');
-  const msgEl = document.getElementById('msg');
-  const fromEl = document.getElementById('from');
-  const notifyChip = document.getElementById('notifyChip');
-  const btnAccept = document.getElementById('btnAccept');
-  const btnDecline = document.getElementById('btnDecline');
-  const btnNotify = document.getElementById('btnNotify');
-  const btnMin = document.getElementById('btnMinimise');
-  const btnMax = document.getElementById('btnMaximise');
-  const miniNotify = document.getElementById('btnMiniNotify');
-  const miniMax = document.getElementById('btnMiniMax');
-  const miniBox = document.getElementById('minibox');
-  const miniStatus = document.getElementById('miniStatus');
+  // --- helpers (ES5-safe) ---
+  function byId(id){ return document.getElementById(id); }
+  function hasClass(el, c){ return (' ' + el.className + ' ').indexOf(' ' + c + ' ') > -1; }
+  function addClass(el, c){ if (!hasClass(el,c)) el.className = (el.className ? el.className+' ' : '') + c; }
+  function removeClass(el, c){ el.className = (' ' + el.className + ' ').replace(' ' + c + ' ', ' ').trim(); }
+  function setClass(el, c, on){ if (on) addClass(el,c); else removeClass(el,c); }
 
-  // Internal state
-  const state = {
-    view: 'min',           // 'min' | 'max'
+  function parseHash(){
+    var h = window.location.hash.replace(/^#/,'');
+    var out = {};
+    if (!h) return out;
+    var parts = h.split('&');
+    for (var i=0;i<parts.length;i++){
+      var kv = parts[i].split('=');
+      var k = decodeURIComponent(kv[0]||'');
+      var v = decodeURIComponent(kv[1]||'');
+      if (k) out[k] = v;
+    }
+    return out;
+  }
+  function setHashParam(k,v){
+    var p = parseHash();
+    p[k] = v;
+    var a=[], key;
+    for (key in p){ if (p.hasOwnProperty(key) && p[key] !== undefined && p[key] !== null) {
+      a.push(encodeURIComponent(key)+'='+encodeURIComponent(p[key]));
+    }}
+    window.location.hash = '#' + a.join('&');
+  }
+
+  var root = byId('HUD');
+  var msgEl = byId('msg');
+  var fromEl = byId('from');
+  var notifyChip = byId('notifyChip');
+  var btnAccept = byId('btnAccept');
+  var btnDecline = byId('btnDecline');
+  var btnNotify = byId('btnNotify');
+  var btnMin = byId('btnMinimise');
+  var btnMax = byId('btnMaximise');
+  var miniNotify = byId('btnMiniNotify');
+  var miniMax = byId('btnMiniMax');
+  var miniBox = byId('minibox');
+  var miniStatus = byId('miniStatus');
+
+  var state = {
+    view: 'min',
     notifyOn: false,
-    current: null,         // { name, message, incoming, locked }
-    lastAction: null       // { type, ts }
+    current: null,
+    lastAction: null
   };
 
   function applyView(){
-    root.classList.toggle('min', state.view === 'min');
-    root.classList.toggle('max', state.view === 'max');
-    btnMax.style.display = state.view === 'min' ? '' : 'none';
-    btnMin.style.display = state.view === 'max' ? '' : 'none';
+    setClass(root, 'min', state.view === 'min');
+    setClass(root, 'max', state.view === 'max');
+    btnMax.style.display = (state.view === 'min') ? '' : 'none';
+    btnMin.style.display = (state.view === 'max') ? '' : 'none';
   }
 
   function setNotify(on){
     state.notifyOn = !!on;
-    notifyChip.classList.toggle('ok', state.notifyOn);
-    notifyChip.classList.toggle('off', !state.notifyOn);
+    setClass(notifyChip, 'ok', state.notifyOn);
+    setClass(notifyChip, 'off', !state.notifyOn);
     notifyChip.textContent = 'Notify: ' + (state.notifyOn ? 'ON' : 'OFF');
     btnNotify.textContent = state.notifyOn ? 'Turn OFF' : 'Turn ON';
     miniNotify.textContent = state.notifyOn ? 'Notify ON' : 'Notify OFF';
   }
 
   function setMessage(payload){
-    // payload: { name, message, incoming:boolean }
-    if (!payload) { state.current = null; renderMessage(); return; }
-    state.current = { name: payload.name||'—', message: payload.message||'', incoming: !!payload.incoming, locked:false };
+    if (!payload){
+      state.current = null;
+      renderMessage();
+      return;
+    }
+    state.current = {
+      name: payload.name || '—',
+      message: payload.message || '',
+      incoming: !!payload.incoming,
+      locked: false
+    };
     renderMessage();
   }
 
@@ -182,19 +87,20 @@
       fromEl.textContent = 'From: —';
       msgEl.textContent = 'No active request.';
       miniStatus.textContent = 'No messages';
-      miniBox.classList.remove('alertPulse');
+      removeClass(miniBox, 'alertPulse');
+      btnAccept.disabled = false;
+      btnDecline.disabled = false;
       return;
     }
     fromEl.textContent = 'From: ' + state.current.name;
     msgEl.textContent = state.current.message;
     miniStatus.textContent = state.current.incoming ? ('From ' + state.current.name) : 'No messages';
-    // Flash only if minimised, incoming, and notifications ON
+
     if (state.view === 'min' && state.current.incoming && state.notifyOn){
-      miniBox.classList.add('alertPulse');
+      addClass(miniBox, 'alertPulse');
     } else {
-      miniBox.classList.remove('alertPulse');
+      removeClass(miniBox, 'alertPulse');
     }
-    // Lock UI if accepted
     btnAccept.disabled = !!state.current.locked;
     btnDecline.disabled = !!state.current.locked;
   }
@@ -206,93 +112,71 @@
   }
 
   function signal(action){
-    // Expose action via location.hash so LSL can read it if desired.
-    const ts = Date.now();
-    state.lastAction = { type: action, ts };
+    state.lastAction = { type: action, ts: (new Date()).getTime() };
     try {
-      const frag = new URLSearchParams(window.location.hash.slice(1));
-      frag.set('act', action);
-      frag.set('ts', String(ts));
-      if (state.current){
-        frag.set('resident', state.current.name);
-      }
-      window.location.hash = '#' + frag.toString();
+      setHashParam('act', action);
+      setHashParam('ts', state.lastAction.ts);
+      if (state.current){ setHashParam('resident', state.current.name); }
     } catch(e){}
   }
 
-  // Button behavior
-  btnAccept.addEventListener('click', function(){
+  // Button handlers
+  btnAccept.onclick = function(){
     if (!state.current) return;
-    state.current.locked = true; // locally lock
+    state.current.locked = true;
     renderMessage();
     signal('accept');
-  });
-
-  btnDecline.addEventListener('click', function(){
-    // Clear locally
+  };
+  btnDecline.onclick = function(){
     state.current = null;
     renderMessage();
     signal('decline');
-  });
-
-  btnNotify.addEventListener('click', function(){
+  };
+  btnNotify.onclick = function(){
     setNotify(!state.notifyOn);
     renderMessage();
     signal(state.notifyOn ? 'notify_on' : 'notify_off');
-  });
-
-  btnMin.addEventListener('click', function(){
+  };
+  btnMin.onclick = function(){
     setView('min');
     signal('minimise');
-  });
-
-  btnMax.addEventListener('click', function(){
+  };
+  btnMax.onclick = function(){
     setView('max');
     signal('maximise');
-  });
-
-  miniMax.addEventListener('click', function(){
+  };
+  miniMax.onclick = function(){
     setView('max');
     signal('maximise');
-  });
-
-  miniNotify.addEventListener('click', function(){
+  };
+  miniNotify.onclick = function(){
     setNotify(!state.notifyOn);
     renderMessage();
     signal(state.notifyOn ? 'notify_on' : 'notify_off');
-  });
-
-  // Optional: read params from the URL fragment for quick LSL updates
-  function readHash(){
-    try {
-      const q = new URLSearchParams(window.location.hash.slice(1));
-      const v = q.get('view');           // 'min'|'max'
-      const on = q.get('notify');        // '0'|'1'
-      const name = q.get('name');        // resident name
-      const message = q.get('msg');      // message
-      const incoming = q.get('incoming');// '0'|'1'
-      if (v) setView(v);
-      if (on !== null) setNotify(on === '1');
-      if (name !== null || message !== null){
-        setMessage({ name: name||'—', message: message||'', incoming: incoming === '1' });
-      }
-    } catch(e){}
-  }
-  window.addEventListener('hashchange', readHash);
-
-  // Public mini-API (LSL can reload the page and the fragment to drive this,
-  // but you can also use these names if you inject a small inline script later)
-  window.HUD = {
-    setView, setNotify, setMessage,
-    getState: ()=>({ view: state.view, notifyOn: state.notifyOn, current: state.current }),
-    pulse: function(on){ // manual control of the minimise pulse
-      if (on){ miniBox.classList.add('alertPulse'); } else { miniBox.classList.remove('alertPulse'); }
-    }
   };
+
+  function readHash(){
+    try{
+      var q = parseHash();
+      var v = q.view;
+      var on = q.notify;
+      var name = q.name;
+      var message = q.msg;
+      var incoming = q.incoming;
+      if (v) setView(v);
+      if (on != null) setNotify(on === '1' || on === 'true');
+      if (name != null || message != null){
+        setMessage({ name: name || '—', message: message || '', incoming: (incoming === '1' || incoming === 'true') });
+      }
+    }catch(e){}
+  }
+  if (window.addEventListener) {
+    window.addEventListener('hashchange', readHash, false);
+  } else if (window.attachEvent) {
+    window.attachEvent('onhashchange', readHash);
+  }
 
   // Initial paint
   setView('min'); setNotify(false); setMessage(null); readHash();
 })();
 </script>
-</body>
-</html>
