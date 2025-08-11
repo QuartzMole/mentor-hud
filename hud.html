@@ -1,169 +1,101 @@
 <script>
 (function(){
-  // --- helpers (ES5-safe) ---
   function byId(id){ return document.getElementById(id); }
   function hasClass(el, c){ return (' ' + el.className + ' ').indexOf(' ' + c + ' ') > -1; }
-  function addClass(el, c){ if (!hasClass(el,c)) el.className = (el.className ? el.className+' ' : '') + c; }
-  function removeClass(el, c){ el.className = (' ' + el.className + ' ').replace(' ' + c + ' ', ' ').trim(); }
-  function setClass(el, c, on){ if (on) addClass(el,c); else removeClass(el,c); }
+  function addClass(el, c){ if (!hasClass(el,c)) el.className = (el.className?el.className+' ':'') + c; }
+  function removeClass(el, c){
+    var s = ' ' + el.className + ' ';
+    while (s.indexOf(' ' + c + ' ') > -1) s = s.replace(' ' + c + ' ', ' ');
+    el.className = s.replace(/^\s+|\s+$/g,'');
+  }
+  function setClass(el, c, on){ if(on) addClass(el,c); else removeClass(el,c); }
 
   function parseHash(){
-    var h = window.location.hash.replace(/^#/,'');
-    var out = {};
+    var h = (window.location.hash||'').replace(/^#/,''); var out = {};
     if (!h) return out;
-    var parts = h.split('&');
-    for (var i=0;i<parts.length;i++){
-      var kv = parts[i].split('=');
-      var k = decodeURIComponent(kv[0]||'');
-      var v = decodeURIComponent(kv[1]||'');
+    var parts = h.split('&'), i, kv, k, v;
+    for (i=0;i<parts.length;i++){
+      kv = parts[i].split('=');
+      k = decodeURIComponent(kv[0]||''); v = decodeURIComponent(kv[1]||'');
       if (k) out[k] = v;
     }
     return out;
   }
 
-  var root = byId('HUD');
-  var msgEl = byId('msg');
-  var fromEl = byId('from');
-  var notifyChip = byId('notifyChip');
-  var btnAccept = byId('btnAccept');
-  var btnDecline = byId('btnDecline');
-  var btnNotify = byId('btnNotify');
-  var btnMin = byId('btnMinimise');
-  var btnMax = byId('btnMaximise');
-  var miniNotify = byId('btnMiniNotify');
-  var miniMax = byId('btnMiniMax');
-  var miniBox = byId('minibox');
-  var miniStatus = byId('miniStatus');
+  var root = byId('HUD'),
+      msgEl = byId('msg'),
+      fromEl = byId('from'),
+      notifyChip = byId('notifyChip'),
+      btnAccept = byId('btnAccept'),
+      btnDecline = byId('btnDecline'),
+      btnNotify = byId('btnNotify'),
+      btnMin = byId('btnMinimise'),
+      btnMax = byId('btnMaximise'),
+      miniNotify = byId('btnMiniNotify'),
+      miniMax = byId('btnMiniMax'),
+      miniBox = byId('minibox'),
+      miniStatus = byId('miniStatus');
 
-  var state = {
-    view: 'min',
-    notifyOn: false,
-    current: null,
-    lastAction: null
-  };
+  var state = { view:'min', notifyOn:false, current:null };
 
   function applyView(){
-    setClass(root, 'min', state.view === 'min');
-    setClass(root, 'max', state.view === 'max');
-    btnMax.style.display = (state.view === 'min') ? '' : 'none';
-    btnMin.style.display = (state.view === 'max') ? '' : 'none';
+    setClass(root,'min', state.view==='min');
+    setClass(root,'max', state.view==='max');
+    btnMax.style.display = (state.view==='min') ? '' : 'none';
+    btnMin.style.display = (state.view==='max') ? '' : 'none';
   }
-
   function setNotify(on){
     state.notifyOn = !!on;
-    setClass(notifyChip, 'ok', state.notifyOn);
-    setClass(notifyChip, 'off', !state.notifyOn);
+    setClass(notifyChip,'ok', state.notifyOn);
+    setClass(notifyChip,'off', !state.notifyOn);
     notifyChip.textContent = 'Notify: ' + (state.notifyOn ? 'ON' : 'OFF');
-    btnNotify.textContent = state.notifyOn ? 'Turn OFF' : 'Turn ON';
+    btnNotify.textContent  = state.notifyOn ? 'Turn OFF' : 'Turn ON';
     miniNotify.textContent = state.notifyOn ? 'Notify ON' : 'Notify OFF';
   }
-
-  function setMessage(payload){
-    if (!payload){
-      state.current = null;
-      renderMessage();
-      return;
-    }
-    state.current = {
-      name: payload.name || '—',
-      message: payload.message || '',
-      incoming: !!payload.incoming,
-      locked: false
-    };
+  function setMessage(p){
+    if(!p){ state.current=null; return renderMessage(); }
+    state.current = { name:(p.name||'—'), message:(p.message||''), incoming:!!p.incoming, locked:false };
     renderMessage();
   }
-
   function renderMessage(){
-    if (!state.current){
-      fromEl.textContent = 'From: —';
-      msgEl.textContent = 'No active request.';
-      miniStatus.textContent = 'No messages';
-      removeClass(miniBox, 'alertPulse');
-      btnAccept.disabled = false;
-      btnDecline.disabled = false;
+    if(!state.current){
+      fromEl.textContent='From: —';
+      msgEl.textContent='No active request.';
+      miniStatus.textContent='No messages';
+      removeClass(miniBox,'alertPulse');
+      btnAccept.disabled=btnDecline.disabled=false;
       return;
     }
-    fromEl.textContent = 'From: ' + state.current.name;
-    msgEl.textContent = state.current.message;
+    fromEl.textContent='From: ' + state.current.name;
+    msgEl.textContent=state.current.message;
     miniStatus.textContent = state.current.incoming ? ('From ' + state.current.name) : 'No messages';
-    if (state.view === 'min' && state.current.incoming && state.notifyOn){
-      addClass(miniBox, 'alertPulse');
-    } else {
-      removeClass(miniBox, 'alertPulse');
-    }
+    if(state.view==='min' && state.current.incoming && state.notifyOn) addClass(miniBox,'alertPulse');
+    else removeClass(miniBox,'alertPulse');
     btnAccept.disabled = !!state.current.locked;
     btnDecline.disabled = !!state.current.locked;
   }
+  function setView(v){ state.view = (v==='max')?'max':'min'; applyView(); renderMessage(); }
 
-  function setView(v){
-    state.view = (v === 'max') ? 'max' : 'min';
-    applyView();
-    renderMessage();
-  }
+  // Button handlers (no URL changes!)
+  btnAccept.onclick = function(){ if(!state.current) return; state.current.locked=true; renderMessage(); };
+  btnDecline.onclick = function(){ state.current=null; renderMessage(); };
+  btnNotify.onclick  = function(){ setNotify(!state.notifyOn); renderMessage(); };
+  btnMin.onclick     = function(){ setView('min'); };
+  btnMax.onclick     = function(){ setView('max'); };
+  miniMax.onclick    = function(){ setView('max'); };
+  miniNotify.onclick = function(){ setNotify(!state.notifyOn); renderMessage(); };
 
-  // IMPORTANT: do NOT change location.hash here (MOAP reloads on any URL change)
-  function signal(action){
-    state.lastAction = { type: action, ts: (new Date()).getTime() };
-    // For now, just update document title as a debug breadcrumb (harmless)
-    try { document.title = "Mentor HUD • " + state.lastAction.type; } catch(e){}
-  }
+  // Only read hash once at load (so LSL can pre-fill state)
+  (function readHashOnce(){
+    var q = parseHash();
+    if (q.view) setView(q.view);
+    if (q.notify!=null) setNotify(q.notify==='1' || q.notify==='true');
+    if (q.name!=null || q.msg!=null){
+      setMessage({ name:(q.name||'—'), message:(q.msg||''), incoming:(q.incoming==='1'||q.incoming==='true') });
+    }
+  })();
 
-  // Button handlers
-  btnAccept.onclick = function(){
-    if (!state.current) return;
-    state.current.locked = true;
-    renderMessage();
-    signal('accept');
-  };
-  btnDecline.onclick = function(){
-    state.current = null;
-    renderMessage();
-    signal('decline');
-  };
-  btnNotify.onclick = function(){
-    setNotify(!state.notifyOn);
-    renderMessage();
-    signal(state.notifyOn ? 'notify_on' : 'notify_off');
-  };
-  btnMin.onclick = function(){
-    setView('min');
-    signal('minimise');
-  };
-  btnMax.onclick = function(){
-    setView('max');
-    signal('maximise');
-  };
-  miniMax.onclick = function(){
-    setView('max');
-    signal('maximise');
-  };
-  miniNotify.onclick = function(){
-    setNotify(!state.notifyOn);
-    renderMessage();
-    signal(state.notifyOn ? 'notify_on' : 'notify_off');
-  };
-
-  // Read hash ONLY when LSL sets it on load or via a true navigation
-  function readHash(){
-    try{
-      var q = parseHash();
-      var v = q.view;
-      var on = q.notify;
-      var name = q.name;
-      var message = q.msg;
-      var incoming = q.incoming;
-      if (v) setView(v);
-      if (on != null) setNotify(on === '1' || on === 'true');
-      if (name != null || message != null){
-        setMessage({ name: name || '—', message: message || '', incoming: (incoming === '1' || incoming === 'true') });
-      }
-    }catch(e){}
-  }
-  // Don’t listen to hashchange (viewer may treat it as navigation anyway)
-  // If you *do* want it in a desktop browser, uncomment:
-  // if (window.addEventListener) window.addEventListener('hashchange', readHash, false);
-
-  // Initial paint
-  setView('min'); setNotify(false); setMessage(null); readHash();
+  // Initial paint if hash provided nothing
+  applyView(); renderMessage();
 })();
 </script>
