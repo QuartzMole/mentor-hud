@@ -1,101 +1,114 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Mentor HUD</title>
+<style>
+  body{margin:0;background:#111;color:#eee;font:14px Arial,Helvetica,sans-serif}
+  .box{border:1px solid #334;background:#1a1f27;border-radius:10px;padding:8px;margin:6px}
+  .hidden{display:none}
+  .btn{padding:6px 10px;margin:2px;border:1px solid #2b3344;background:#182028;color:#eee;border-radius:8px;cursor:pointer}
+  .btn:active{position:relative;top:1px}
+  .msg{height:140px;overflow:auto;border:1px solid #334;background:#0b0f14;border-radius:8px;padding:6px}
+  .row{display:block;margin:4px 0}
+  .right{float:right}
+  .clear{clear:both}
+</style>
+
+<!-- Minimised view -->
+<div id="minView" class="box">
+  <div class="row" style="text-align:center;margin-bottom:6px" id="miniStatus">No messages</div>
+  <div class="row" style="text-align:center">
+    <button class="btn" onclick="setView('max')">Open</button>
+    <button class="btn" id="miniNotifyBtn" onclick="toggleNotify()">Notify OFF</button>
+  </div>
+</div>
+
+<!-- Maximised view -->
+<div id="maxView" class="box hidden">
+  <div class="row">
+    <strong>Mentor Assist</strong>
+    <span id="notifyChip" class="right">Notify: OFF</span>
+    <div class="clear"></div>
+  </div>
+  <div class="row" id="from">From: —</div>
+  <div id="msg" class="msg">No active request.</div>
+  <div class="row">
+    <button class="btn" onclick="accept()">Accept</button>
+    <button class="btn" onclick="decline()">Decline</button>
+    <button class="btn right" id="notifyBtn" onclick="toggleNotify()">Turn ON</button>
+    <button class="btn right" onclick="setView('min')" style="margin-right:6px">Minimise</button>
+    <div class="clear"></div>
+  </div>
+</div>
+
 <script>
-(function(){
-  function byId(id){ return document.getElementById(id); }
-  function hasClass(el, c){ return (' ' + el.className + ' ').indexOf(' ' + c + ' ') > -1; }
-  function addClass(el, c){ if (!hasClass(el,c)) el.className = (el.className?el.className+' ':'') + c; }
-  function removeClass(el, c){
-    var s = ' ' + el.className + ' ';
-    while (s.indexOf(' ' + c + ' ') > -1) s = s.replace(' ' + c + ' ', ' ');
-    el.className = s.replace(/^\s+|\s+$/g,'');
-  }
-  function setClass(el, c, on){ if(on) addClass(el,c); else removeClass(el,c); }
+  // State
+  var notifyOn = false;
+  var current = null; // {name, message, incoming, locked}
 
-  function parseHash(){
-    var h = (window.location.hash||'').replace(/^#/,''); var out = {};
-    if (!h) return out;
-    var parts = h.split('&'), i, kv, k, v;
-    for (i=0;i<parts.length;i++){
-      kv = parts[i].split('=');
-      k = decodeURIComponent(kv[0]||''); v = decodeURIComponent(kv[1]||'');
-      if (k) out[k] = v;
-    }
-    return out;
+  // UI getters
+  function el(id){ return document.getElementById(id); }
+
+  // View control
+  function setView(v){
+    el('minView').className = (v==='max') ? 'box hidden' : 'box';
+    el('maxView').className = (v==='max') ? 'box' : 'box hidden';
+    render();
   }
 
-  var root = byId('HUD'),
-      msgEl = byId('msg'),
-      fromEl = byId('from'),
-      notifyChip = byId('notifyChip'),
-      btnAccept = byId('btnAccept'),
-      btnDecline = byId('btnDecline'),
-      btnNotify = byId('btnNotify'),
-      btnMin = byId('btnMinimise'),
-      btnMax = byId('btnMaximise'),
-      miniNotify = byId('btnMiniNotify'),
-      miniMax = byId('btnMiniMax'),
-      miniBox = byId('minibox'),
-      miniStatus = byId('miniStatus');
-
-  var state = { view:'min', notifyOn:false, current:null };
-
-  function applyView(){
-    setClass(root,'min', state.view==='min');
-    setClass(root,'max', state.view==='max');
-    btnMax.style.display = (state.view==='min') ? '' : 'none';
-    btnMin.style.display = (state.view==='max') ? '' : 'none';
+  // Notify toggle + UI
+  function updateNotifyUI(){
+    el('notifyChip').innerHTML = 'Notify: ' + (notifyOn ? 'ON' : 'OFF');
+    el('notifyBtn').innerHTML  = notifyOn ? 'Turn OFF' : 'Turn ON';
+    el('miniNotifyBtn').innerHTML = notifyOn ? 'Notify ON' : 'Notify OFF';
   }
-  function setNotify(on){
-    state.notifyOn = !!on;
-    setClass(notifyChip,'ok', state.notifyOn);
-    setClass(notifyChip,'off', !state.notifyOn);
-    notifyChip.textContent = 'Notify: ' + (state.notifyOn ? 'ON' : 'OFF');
-    btnNotify.textContent  = state.notifyOn ? 'Turn OFF' : 'Turn ON';
-    miniNotify.textContent = state.notifyOn ? 'Notify ON' : 'Notify OFF';
+  function toggleNotify(){
+    notifyOn = !notifyOn;
+    updateNotifyUI();
   }
+
+  // Message control
   function setMessage(p){
-    if(!p){ state.current=null; return renderMessage(); }
-    state.current = { name:(p.name||'—'), message:(p.message||''), incoming:!!p.incoming, locked:false };
-    renderMessage();
+    current = p ? {
+      name: (p.name || '—'),
+      message: (p.message || ''),
+      incoming: !!p.incoming,
+      locked: false
+    } : null;
+    render();
   }
-  function renderMessage(){
-    if(!state.current){
-      fromEl.textContent='From: —';
-      msgEl.textContent='No active request.';
-      miniStatus.textContent='No messages';
-      removeClass(miniBox,'alertPulse');
-      btnAccept.disabled=btnDecline.disabled=false;
+
+  function accept(){ if(!current) return; current.locked = true; render(); }
+  function decline(){ current = null; render(); }
+
+  function render(){
+    var from = el('from'), msg = el('msg'), mini = el('miniStatus');
+    if(!current){
+      from.innerHTML = 'From: —';
+      msg.innerHTML = 'No active request.';
+      mini.innerHTML = 'No messages';
       return;
     }
-    fromEl.textContent='From: ' + state.current.name;
-    msgEl.textContent=state.current.message;
-    miniStatus.textContent = state.current.incoming ? ('From ' + state.current.name) : 'No messages';
-    if(state.view==='min' && state.current.incoming && state.notifyOn) addClass(miniBox,'alertPulse');
-    else removeClass(miniBox,'alertPulse');
-    btnAccept.disabled = !!state.current.locked;
-    btnDecline.disabled = !!state.current.locked;
+    from.innerHTML = 'From: ' + current.name;
+    msg.innerHTML = current.message;
+    mini.innerHTML = current.incoming ? ('From ' + current.name) : 'No messages';
   }
-  function setView(v){ state.view = (v==='max')?'max':'min'; applyView(); renderMessage(); }
 
-  // Button handlers (no URL changes!)
-  btnAccept.onclick = function(){ if(!state.current) return; state.current.locked=true; renderMessage(); };
-  btnDecline.onclick = function(){ state.current=null; renderMessage(); };
-  btnNotify.onclick  = function(){ setNotify(!state.notifyOn); renderMessage(); };
-  btnMin.onclick     = function(){ setView('min'); };
-  btnMax.onclick     = function(){ setView('max'); };
-  miniMax.onclick    = function(){ setView('max'); };
-  miniNotify.onclick = function(){ setNotify(!state.notifyOn); renderMessage(); };
+  // One-time hash read for initial state from LSL:
+  (function init(){
+    setView('min'); // default
+    updateNotifyUI();
 
-  // Only read hash once at load (so LSL can pre-fill state)
-  (function readHashOnce(){
-    var q = parseHash();
-    if (q.view) setView(q.view);
-    if (q.notify!=null) setNotify(q.notify==='1' || q.notify==='true');
-    if (q.name!=null || q.msg!=null){
-      setMessage({ name:(q.name||'—'), message:(q.msg||''), incoming:(q.incoming==='1'||q.incoming==='true') });
+    var h = (window.location.hash||'').replace(/^#/,'');
+    if(h){
+      var q = {}; var parts = h.split('&'); var i, kv, k, v;
+      for(i=0;i<parts.length;i++){ kv = parts[i].split('='); k = decodeURIComponent(kv[0]||''); v = decodeURIComponent(kv[1]||''); if(k) q[k]=v; }
+      if(q.view){ setView(q.view); }
+      if(q.notify!=null){ notifyOn = (q.notify==='1' || q.notify==='true'); updateNotifyUI(); }
+      if(q.name!=null || q.msg!=null){
+        setMessage({ name:(q.name||'—'), message:(q.msg||''), incoming:(q.incoming==='1'||q.incoming==='true') });
+      } else { render(); }
+    } else {
+      render();
     }
   })();
-
-  // Initial paint if hash provided nothing
-  applyView(); renderMessage();
-})();
 </script>
