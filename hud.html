@@ -4,49 +4,87 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-  /* Portrait-friendly, ultra-compatible styles */
   html, body { height:100%; }
   body{ margin:0; background:#111; color:#eee; font:14px Arial,Helvetica,sans-serif; }
-  .shell{
-    width: 320px;          /* portrait width */
-    height: 540px;         /* portrait height */
-    margin: 0 auto;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  .panel{
-    height: 100%;
-    border:1px solid #334; background:#1a1f27;
-    border-radius:12px; padding:10px; box-sizing:border-box;
-  }
+  .shell{ width:320px; height:540px; margin:0 auto; padding:10px; box-sizing:border-box; }
+  .panel{ height:100%; border:1px solid #334; background:#1a1f27; border-radius:12px; padding:10px; box-sizing:border-box; }
   .hidden{ display:none; }
   .row{ margin:8px 0; }
   .subtle{ color:#b7c1cc; }
-  .badge{
-    float:right; padding:3px 8px; border:1px solid #2b3344;
-    border-radius:999px; background:#182028; color:#9ac2ff;
-    font-size:12px;
-  }
+  .badge{ float:right; padding:3px 8px; border:1px solid #2b3344; border-radius:999px; background:#182028; color:#9ac2ff; font-size:12px; }
   .clear{ clear:both; }
-  .msg{
-    height: 330px;               /* tall scroll area for portrait */
-    overflow:auto;
-    border:1px solid #334; background:#0b0f14;
-    border-radius:8px; padding:8px; white-space:pre-wrap;
-  }
-
-  /* Buttons: stacked by default, optional 2-up helper */
-  .btn{
-    display:block; width:100%;
-    padding:10px 12px; margin:6px 0;
-    border:1px solid #2b3344; background:#182028; color:#eee;
-    border-radius:8px; cursor:pointer; text-align:center;
-    font-weight:bold;
-  }
+  .msg{ height:330px; overflow:auto; border:1px solid #334; background:#0b0f14; border-radius:8px; padding:8px; white-space:pre-wrap; }
+  .btn{ display:block; width:100%; padding:10px 12px; margin:6px 0; border:1px solid #2b3344; background:#182028; color:#eee; border-radius:8px; cursor:pointer; text-align:center; font-weight:bold; }
   .btn:active{ position:relative; top:1px; }
   .btnRowCenter{ text-align:center; }
   .half{ display:inline-block; width:48%; margin:6px 1%; }
 </style>
 
 <div class="shell">
-  <!-- Minim
+  <!-- Minimised -->
+  <div id="minView" class="panel">
+    <div class="row" style="text-align:center;font-weight:bold">Mentor Assist</div>
+    <div id="miniStatus" class="row subtle" style="text-align:center">No messages</div>
+    <div class="row">
+      <button type="button" class="btn" onclick="hudOpen()">Open</button>
+      <button type="button" class="btn" id="miniNotifyBtn" onclick="toggleNotify()">Notify OFF</button>
+    </div>
+  </div>
+
+  <!-- Maximised -->
+  <div id="maxView" class="panel hidden">
+    <div class="row">
+      <strong>Mentor Assist</strong>
+      <span id="notifyChip" class="badge">Notify: OFF</span>
+      <div class="clear"></div>
+    </div>
+    <div id="from" class="row subtle">From: —</div>
+    <div id="msg" class="msg">No active request.</div>
+    <div class="row">
+      <button type="button" class="btn" onclick="acceptReq()">Accept</button>
+      <button type="button" class="btn" onclick="declineReq()">Decline</button>
+    </div>
+    <div class="row btnRowCenter">
+      <button type="button" class="btn half" onclick="hudMin()">Minimise</button>
+      <button type="button" class="btn half" id="notifyBtn" onclick="toggleNotify()">Turn ON</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function el(id){ return document.getElementById(id); }
+function setText(n,t){ if('textContent'in n) n.textContent=t; else n.innerText=t; }
+function show(id,on){ el(id).className = on ? 'panel' : 'panel hidden'; }
+function parseQuery(){ var s=(location.search||'').replace(/^\?/,''); var o={},p,i,k,v; if(!s)return o; p=s.split('&'); for(i=0;i<p.length;i++){ k=decodeURIComponent((p[i].split('=')[0]||'')); v=decodeURIComponent((p[i].split('=')[1]||'')); if(k) o[k]=v; } return o; }
+function parseHash(){ var h=(location.hash||'').replace(/^#/,''); var o={},p,i,k,v; if(!h)return o; p=h.split('&'); for(i=0;i<p.length;i++){ k=decodeURIComponent((p[i].split('=')[0]||'')); v=decodeURIComponent((p[i].split('=')[1]||'')); if(k) o[k]=v; } return o; }
+
+var notifyOn=false, current=null, CB=(function(){var q=parseQuery();return q.cb||'';})();
+
+function render(){
+  var isMax=(window.__view==='max'); show('maxView',isMax); show('minView',!isMax);
+  setText(el('notifyChip'),'Notify: '+(notifyOn?'ON':'OFF'));
+  setText(el('notifyBtn'), notifyOn?'Turn OFF':'Turn ON');
+  setText(el('miniNotifyBtn'), notifyOn?'Notify ON':'Notify OFF');
+  if(!current){ setText(el('from'),'From: —'); setText(el('msg'),'No active request.'); setText(el('miniStatus'),'No messages'); return; }
+  setText(el('from'),'From: '+current.name); setText(el('msg'),current.message);
+  setText(el('miniStatus'), current.incoming?('From '+current.name):'No messages');
+}
+
+function setView(v){ window.__view=(v==='max')?'max':'min'; render(); }
+function toggleNotify(){ notifyOn=!notifyOn; render(); }
+function setMessage(p){ current=p?{name:(p.name||'—'),message:(p.message||''),incoming:!!p.incoming,locked:false}:null; render(); }
+function acceptReq(){ if(!current)return; current.locked=true; render(); }
+function declineReq(){ current=null; render(); }
+
+function sendToLSL(a){ if(!CB) return false; var u=CB+"?act="+encodeURIComponent(a)+"&t="+(new Date()).getTime(); location.href=u; return true; }
+function hudOpen(){ if(!sendToLSL('maximise')) setView('max'); }
+function hudMin(){  if(!sendToLSL('minimise')) setView('min'); }
+
+(function init(){
+  setView('min'); notifyOn=false; setMessage(null);
+  var h=parseHash(); if(h.view) setView(h.view);
+  if(h.notify!=null) notifyOn=(h.notify==='1'||h.notify==='true');
+  if(h.name!=null||h.msg!=null){ setMessage({name:(h.name||'—'),message:(h.msg||''),incoming:(h.incoming==='1'||h.incoming==='true')}); }
+  else render();
+})();
+</script>
