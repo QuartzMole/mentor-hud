@@ -20,15 +20,6 @@
     }
     return out;
   }
-  function setHashParam(k,v){
-    var p = parseHash();
-    p[k] = v;
-    var a=[], key;
-    for (key in p){ if (p.hasOwnProperty(key) && p[key] !== undefined && p[key] !== null) {
-      a.push(encodeURIComponent(key)+'='+encodeURIComponent(p[key]));
-    }}
-    window.location.hash = '#' + a.join('&');
-  }
 
   var root = byId('HUD');
   var msgEl = byId('msg');
@@ -95,7 +86,6 @@
     fromEl.textContent = 'From: ' + state.current.name;
     msgEl.textContent = state.current.message;
     miniStatus.textContent = state.current.incoming ? ('From ' + state.current.name) : 'No messages';
-
     if (state.view === 'min' && state.current.incoming && state.notifyOn){
       addClass(miniBox, 'alertPulse');
     } else {
@@ -111,13 +101,11 @@
     renderMessage();
   }
 
+  // IMPORTANT: do NOT change location.hash here (MOAP reloads on any URL change)
   function signal(action){
     state.lastAction = { type: action, ts: (new Date()).getTime() };
-    try {
-      setHashParam('act', action);
-      setHashParam('ts', state.lastAction.ts);
-      if (state.current){ setHashParam('resident', state.current.name); }
-    } catch(e){}
+    // For now, just update document title as a debug breadcrumb (harmless)
+    try { document.title = "Mentor HUD • " + state.lastAction.type; } catch(e){}
   }
 
   // Button handlers
@@ -155,6 +143,7 @@
     signal(state.notifyOn ? 'notify_on' : 'notify_off');
   };
 
+  // Read hash ONLY when LSL sets it on load or via a true navigation
   function readHash(){
     try{
       var q = parseHash();
@@ -170,11 +159,9 @@
       }
     }catch(e){}
   }
-  if (window.addEventListener) {
-    window.addEventListener('hashchange', readHash, false);
-  } else if (window.attachEvent) {
-    window.attachEvent('onhashchange', readHash);
-  }
+  // Don’t listen to hashchange (viewer may treat it as navigation anyway)
+  // If you *do* want it in a desktop browser, uncomment:
+  // if (window.addEventListener) window.addEventListener('hashchange', readHash, false);
 
   // Initial paint
   setView('min'); setNotify(false); setMessage(null); readHash();
