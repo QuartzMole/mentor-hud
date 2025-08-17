@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mentor HUD</title>
+  <meta http-equiv="cache-control" content="no-cache" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Open Help Requests</h1>
+      <div class="controls">
+        <button id="refresh">Refresh</button>
+        <label>
+          Auto-refresh
+          <input type="checkbox" id="autorefresh" checked />
+        </label>
+      </div>
+    </header>
+
+    <div id="status" class="status"></div>
+    <ul id="list" class="req-list">Loading…</ul>
+  </div>
+
+  <script>
+    /* For browser testing only. In-world, your LSL wrapper injects these:
+       window.HUD_URL = "<mentor HUD http-in URL>";
+       window.CSRF_NONCE = "<random nonce>";
+    */
+    window.HUD_URL = window.HUD_URL || "http://localhost:8001";
+    window.CSRF_NONCE = window.CSRF_NONCE || "test-mentor-nonce";
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
