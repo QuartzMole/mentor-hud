@@ -1,48 +1,61 @@
-(async function () {
-  const app = document.getElementById('app');
+const HUD_URL = window.HUD_URL;
+const NONCE   = window.CSRF_NONCE;
+const lang    = window.LANG || "en";
 
-  function rowTemplate(r) {
-    const where = `${r.region} @ ${r.pos}`;
-    const age   = r.age_s ? `${r.age_s}s ago` : '';
-    return `
-      <li data-id="${r.id}">
-        <div><strong>${r.name}</strong> — ${r.msg}</div>
-        <div>${where} <small>${age}</small></div>
-        <div>
-          <button class="accept" data-id="${r.id}">Accept</button>
-        </div>
-      </li>`;
+const texts = {
+  en: {
+    title: "Request Mentor Help",
+    instructions: "Please choose one or more topics where you need help.",
+    topics: { scripting:"Scripting", building:"Building", policy:"Policy" },
+    submit: "Submit"
+  },
+  de: {
+    title: "Mentorenhilfe anfordern",
+    instructions: "Bitte wählen Sie ein oder mehrere Themen aus, bei denen Sie Hilfe benötigen.",
+    topics: { scripting:"Skripting", building:"Bauen", policy:"Regeln" },
+    submit: "Absenden"
+  },
+  fr: {
+    title: "Demander l’aide d’un mentor",
+    instructions: "Veuillez choisir un ou plusieurs sujets pour lesquels vous avez besoin d'aide.",
+    topics: { scripting:"Programmation", building:"Construction", policy:"Règles" },
+    submit: "Envoyer"
   }
+  // add more languages as needed
+};
 
-  async function load() {
-    const res = await fetch(`${window.HUD_URL}?action=requests`, { method: 'GET' });
-    const data = await res.json(); // [{id,name,msg,region,pos,age_s}, ...]
-    app.innerHTML = `<ul class="req-list">${data.map(rowTemplate).join('')}</ul>`;
-    wire();
+const t = texts[lang] || texts.en;
+
+const app = document.getElementById("app");
+app.innerHTML = `
+  <h1>${t.title}</h1>
+  <p>${t.instructions}</p>
+  <form id="helpform">
+    ${Object.keys(t.topics).map(code =>
+      `<label><input type="checkbox" name="topic" value="${code}"> ${t.topics[code]}</label>`
+    ).join("<br>")}
+    <br><button type="submit">${t.submit}</button>
+  </form>
+  <div id="result"></div>
+`;
+
+document.getElementById("helpform").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const topics = [...document.querySelectorAll("input[name=topic]:checked")].map(i=>i.value);
+  if (topics.length === 0) {
+    document.getElementById("result").textContent = "⚠️ Please select at least one topic.";
+    return;
   }
-
-  async function accept(reqId) {
-    const url = `${window.HUD_URL}?action=accept&req=${encodeURIComponent(reqId)}&nonce=${encodeURIComponent(window.CSRF_NONCE)}`;
-    const res = await fetch(url, { method: 'POST' });
-    const j = await res.json(); // {status:"accepted"|"already_taken"|...}
-    const li = app.querySelector(`li[data-id="${reqId}"]`);
-    if (!li) return;
-    if (j.status === 'accepted') {
-      li.innerHTML = `<div>✅ Taken by you.</div>`;
-    } else if (j.status === 'already_taken') {
-      li.innerHTML = `<div>⚠️ Already taken by someone else.</div>`;
-    } else {
-      li.innerHTML = `<div>❌ ${j.status || 'error'}</div>`;
-    }
-  }
-
-  function wire() {
-    app.querySelectorAll('button.accept').forEach(btn => {
-      btn.addEventListener('click', () => accept(btn.dataset.id));
+  try {
+    const res = await fetch(`${HUD_URL}?action=submit&nonce=${encodeURIComponent(NONCE)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topics })
     });
+    const j = await res.json();
+    document.getElementById("result").textContent =
+      j.status === "ok" ? "✅ Request sent!" : `❌ Failed: ${j.status}`;
+  } catch (err) {
+    document.getElementById("result").textContent = "❌ Error sending request.";
   }
-
-  await load();
-  // Optional: auto-refresh the list every 10–15s:
-  setInterval(load, 15000);
-})();
+});
