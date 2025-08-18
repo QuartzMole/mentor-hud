@@ -4,11 +4,18 @@
 // Falls back gracefully if not present.
 
 
-// Read from wrapper globals if present, otherwise from query string (since you load from GitHub)
-const qp   = new URLSearchParams(window.location.search);
-const HUD_URL = (window.HUD_URL || qp.get("cb") || "http://localhost:8000");
-const NONCE   = (window.CSRF_NONCE || qp.get("nonce") || "test-nonce");
-const lang    = (window.LANG || qp.get("lang") || "en").toLowerCase();
+// Read from wrapper globals if present, otherwise from query string (URLSearchParams-free for CEF compatibility)
+function qpGet(key) {
+  var s = window.location.search || "";
+  if (!s) return null;
+  var re = new RegExp("[?&]" + key + "=([^&#]*)", "i");
+  var m = re.exec(s);
+  return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
+}
+
+const HUD_URL = window.HUD_URL || qpGet("cb")   || "http://localhost:8000";
+const NONCE   = window.CSRF_NONCE || qpGet("nonce") || "test-nonce";
+const lang    = (window.LANG || qpGet("lang") || "en").toLowerCase();
 
 // Translation dictionary: labels only. The values sent back are stable codes.
 const texts = {
