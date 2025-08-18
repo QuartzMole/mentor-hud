@@ -261,20 +261,22 @@ document.getElementById("helpform").addEventListener("submit", async (e) => {
     return;
   }
 
-// help-hud/app.js — submit handler
-try {
-  const res = await fetch(`${HUD_URL}?action=submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      nonce: NONCE,         // <-- put nonce in the body
-      topics                // ["how","exploring",...]
-    })
-  });
-  const j = await res.json();
-  document.getElementById("result").textContent =
-    j.status === "ok" ? "✅ " + t.sent : `❌ ${j.status || "Failed"}`;
-} catch (err) {
-  document.getElementById("result").textContent = "❌ Network error.";
-}
+  try {
+    const res = await fetch(`${HUD_URL}?action=submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nonce: NONCE,         // nonce goes in the BODY to match your LSL
+        topics                // ["how","exploring", ...]
+      })
+    });
 
+    // Expect JSON like {"status":"ok"} from LSL
+    const j = await res.json();
+    document.getElementById("result").textContent =
+      j.status === "ok" ? "✅ " + t.sent : `❌ ${j.status || "Failed"}`;
+
+  } catch (err) {
+    document.getElementById("result").textContent = "❌ Network error.";
+  }
+});
