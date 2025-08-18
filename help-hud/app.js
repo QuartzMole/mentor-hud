@@ -13,7 +13,12 @@ function qpGet(key) {
   return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
 }
 
-const HUD_URL = window.HUD_URL || qpGet("cb")   || "http://localhost:8000";
+let cb = window.HUD_URL || qpGet("cb");
+if (cb && cb.startsWith("https://")) {
+  cb = "http://" + cb.slice(8);   // force to http
+}
+const HUD_URL = cb || "http://localhost:8000";
+
 const NONCE   = window.CSRF_NONCE || qpGet("nonce") || "test-nonce";
 const lang    = (window.LANG || qpGet("lang") || "en").toLowerCase();
 // Force HTTPS if the callback was accidentally http:
