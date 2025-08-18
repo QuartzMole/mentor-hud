@@ -271,22 +271,22 @@ document.getElementById("helpform").addEventListener("submit", async (e) => {
     return;
   }
 
-  try {
-    const res = await fetch(`${HUD_URL}?action=submit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nonce: NONCE,         // nonce goes in the BODY to match your LSL
-        topics                // ["how","exploring", ...]
-      })
-    });
+try {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = `${HUD_URL}?action=submit`;   // same endpoint
 
-    // Expect JSON like {"status":"ok"} from LSL
-    const j = await res.json();
-    document.getElementById("result").textContent =
-      j.status === "ok" ? "✅ " + t.sent : `❌ ${j.status || "Failed"}`;
+  // Send exactly what your LSL expects, as one field named "json"
+  const payload = document.createElement("input");
+  payload.type = "hidden";
+  payload.name = "json";
+  payload.value = JSON.stringify({ nonce: NONCE, topics });
+  form.appendChild(payload);
 
-  } catch (err) {
-    document.getElementById("result").textContent = "❌ Network error.";
-  }
+  document.body.appendChild(form);
+  form.submit(); // Triggers LSL http_request (POST)
+} catch (err) {
+  document.getElementById("result").textContent = "❌ Network error.";
+}
+
 });
