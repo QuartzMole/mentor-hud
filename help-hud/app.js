@@ -16,6 +16,19 @@ function qpGet(key) {
 const HUD_URL = window.HUD_URL || qpGet("cb")   || "http://localhost:8000";
 const NONCE   = window.CSRF_NONCE || qpGet("nonce") || "test-nonce";
 const lang    = (window.LANG || qpGet("lang") || "en").toLowerCase();
+// Force HTTPS if the callback was accidentally http:
+let CALLBACK_URL = HUD_URL;
+if (/^http:\/\//i.test(CALLBACK_URL)) {
+  CALLBACK_URL = CALLBACK_URL.replace(/^http:\/\//i, "https://");
+}
+
+// TEMP: show what the page will post to
+// (remove this once it's working)
+window.addEventListener("DOMContentLoaded", () => {
+  const dbg = document.getElementById("result");
+  if (dbg) dbg.textContent = `Posting to: ${CALLBACK_URL}  (nonce=${NONCE})`;
+});
+
 
 // Translation dictionary: labels only. The values sent back are stable codes.
 const texts = {
