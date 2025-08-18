@@ -261,16 +261,20 @@ document.getElementById("helpform").addEventListener("submit", async (e) => {
     return;
   }
 
-  try {
-    const res = await fetch(`${HUD_URL}?action=submit&nonce=${encodeURIComponent(NONCE)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topics })
-    });
-    const j = await res.json();
-    document.getElementById("result").textContent =
-      j.status === "ok" ? "✅ " + t.sent : `❌ ${j.status || "Failed"}`;
-  } catch (err) {
-    document.getElementById("result").textContent = "❌ Network error.";
-  }
-});
+// help-hud/app.js — submit handler
+try {
+  const res = await fetch(`${HUD_URL}?action=submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nonce: NONCE,         // <-- put nonce in the body
+      topics                // ["how","exploring",...]
+    })
+  });
+  const j = await res.json();
+  document.getElementById("result").textContent =
+    j.status === "ok" ? "✅ " + t.sent : `❌ ${j.status || "Failed"}`;
+} catch (err) {
+  document.getElementById("result").textContent = "❌ Network error.";
+}
+
