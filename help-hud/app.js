@@ -3,9 +3,12 @@
 //   window.HUD_URL, window.CSRF_NONCE, window.LANG (e.g. "en","de",...)
 // Falls back gracefully if not present.
 
-const HUD_URL = window.HUD_URL || "http://localhost:8000";   // for browser testing
-const NONCE   = window.CSRF_NONCE || "test-nonce";
-const lang    = (window.LANG || "en").toLowerCase();
+
+// Read from wrapper globals if present, otherwise from query string (since you load from GitHub)
+const qp   = new URLSearchParams(window.location.search);
+const HUD_URL = (window.HUD_URL || qp.get("cb") || "http://localhost:8000");
+const NONCE   = (window.CSRF_NONCE || qp.get("nonce") || "test-nonce");
+const lang    = (window.LANG || qp.get("lang") || "en").toLowerCase();
 
 // Translation dictionary: labels only. The values sent back are stable codes.
 const texts = {
