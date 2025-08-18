@@ -287,9 +287,8 @@ document.getElementById("helpform").addEventListener("submit", async (e) => {
 try {
   const form = document.createElement("form");
   form.method = "POST";
-  form.action = `${HUD_URL}?action=submit`;   // same endpoint
+  form.action = `${CALLBACK_URL}?action=submit`;   // <- use the HTTPS-normalized URL
 
-  // Send exactly what your LSL expects, as one field named "json"
   const payload = document.createElement("input");
   payload.type = "hidden";
   payload.name = "json";
@@ -297,9 +296,10 @@ try {
   form.appendChild(payload);
 
   document.body.appendChild(form);
-  form.submit(); // Triggers LSL http_request (POST)
+  form.submit(); // triggers your LSL http_request (POST)
 } catch (err) {
   document.getElementById("result").textContent = "❌ Network error.";
 }
+
 
 });
