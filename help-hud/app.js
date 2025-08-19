@@ -4,34 +4,33 @@
 // Falls back gracefully if not present.
 
 
-// Read from wrapper globals if present, otherwise from query string (URLSearchParams-free for CEF compatibility)
+// ---- DIAGNOSTIC PARSER + HARD-LOCK TO HTTP ----
 function qpGet(key) {
   var s = window.location.search || "";
-  if (!s) return null;
   var re = new RegExp("[?&]" + key + "=([^&#]*)", "i");
   var m = re.exec(s);
   return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
 }
 
-let cb = window.HUD_URL || qpGet("cb");
-if (cb && cb.startsWith("https://")) {
-  cb = "http://" + cb.slice(8);   // force to http
-}
-const HUD_URL = cb || "http://localhost:8000";
+var injectedHUD = window.HUD_URL || null;   // wrapper-injected (preferred)
+var queryHUD    = qpGet("cb");              // old style via ?cb=
+var chosenHUD   = injectedHUD || queryHUD || "http://localhost:8000";
 
-const NONCE   = window.CSRF_NONCE || qpGet("nonce") || "test-nonce";
+// HARD RULE: never use https for the cap (prevents ERR_CERT_AUTHORITY_INVALID)
+chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");
+
+const HUD_URL = chosenHUD;
+const NONCE   = (window.CSRF_NONCE || qpGet("nonce") || "test-nonce");
 const lang    = (window.LANG || qpGet("lang") || "en").toLowerCase();
-// Force HTTPS if the callback was accidentally http:
-let CALLBACK_URL = HUD_URL;
-if (/^http:\/\//i.test(CALLBACK_URL)) {
-  CALLBACK_URL = CALLBACK_URL.replace(/^http:\/\//i, "https://");
-}
 
-// TEMP: show what the page will post to
-// (remove this once it's working)
+// ---- tiny on-page debug banner so you can see what it chose ----
 window.addEventListener("DOMContentLoaded", () => {
-  const dbg = document.getElementById("result");
-  if (dbg) dbg.textContent = `Posting to: ${CALLBACK_URL}  (nonce=${NONCE})`;
+  var dbg = document.getElementById("result");
+  if (dbg) {
+    dbg.textContent =
+      `Origin=${location.origin} | HUD_URL=${HUD_URL} | ` +
+      `injectedHUD=${injectedHUD ?? "nil"} | queryHUD=${queryHUD ?? "nil"} | nonce=${NONCE}`;
+  }
 });
 
 
@@ -285,26 +284,36 @@ document.getElementById("helpform").addEventListener("submit", async (e) => {
   const topics = [...document.querySelectorAll("input[name=topic]:checked")].map(i => i.value);
 
   if (topics.length === 0) {
-    document.getElementById("result").textContent = "⚠️ " + t.needOne;
+    document.getElementById("result").textContent = "⚠️ " + (texts[lang]||texts.en).needOne;
     return;
   }
 
-try {
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = `${CALLBACK_URL}?action=submit`;   // <- use the HTTPS-normalized URL
+  // Show exactly where we’re about to post
+  const dbg = document.getElementById("result");
+  if (dbg) dbg.textContent = `Posting (HTTP nav) to: ${HUD_URL}?action=submit`;
 
-  const payload = document.createElement("input");
-  payload.type = "hidden";
-  payload.name = "json";
-  payload.value = JSON.stringify({ nonce: NONCE, topics });
-  form.appendChild(payload);
+  try {
+    // Use navigation POST to avoid CORS/mixed-content issues.
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = `${HUD_URL}?action=submit`; // HARD-LOCKED HTTP URL
 
-  document.body.appendChild(form);
-  form.submit(); // triggers your LSL http_request (POST)
-} catch (err) {
-  document.getElementById("result").textContent = "❌ Network error.";
-}
+    const payload = document.createElement("input");
+    payload.type = "hidden";
+    payload.name = "json";
+    payload.value = JSON.stringify({ nonce: NONCE, topics });
+    form.appendChild(payload);
 
+    // optional: echo field so your LSL can confirm reachability in owner chat
+    const echo = document.createElement("input");
+    echo.type = "hidden";
+    echo.name = "echo";
+    echo.value = "ping";
+    form.appendChild(echo);
 
+    document.body.appendChild(form);
+    form.submit(); // triggers LSL http_request (POST) on the cap
+  } catch (err) {
+    if (dbg) dbg.textContent = "❌ Network error.";
+  }
 });
