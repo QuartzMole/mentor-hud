@@ -1,10 +1,9 @@
 /* help-hud/app.js — Resident Help HUD UI
-   The LSL wrapper injects: window.HUD_URL, window.CSRF_NONCE, window.LANG
-   Falls back to ?cb=&nonce=&lang= for local testing.
-   Posts via a hidden iframe (no page navigation). Shows success text only.
+   LSL injects: window.HUD_URL, window.CSRF_NONCE, window.LANG
+   Posts via a hidden iframe (no page navigation).
 */
 
-/* 1) Translations FIRST */
+/* Translations FIRST (unchanged) */
 const texts = {
   en:{title:"Request Mentor Help",instructions:"Please choose one or more topics where you need help.",topics:{how:"How Second Life works",exploring:"Exploring the world",meeting:"Meeting people/finding friends",freebies:"Finding freebies",avatar:"Avatar possibilities"},submit:"Submit",needOne:"Please select at least one topic.",sent:"Request sent!"},
   da:{title:"Anmod om mentorhjælp",instructions:"Vælg et eller flere emner, hvor du har brug for hjælp.",topics:{how:"Hvordan Second Life fungerer",exploring:"Udforske verdenen",meeting:"Møde folk / finde venner",freebies:"Finde gratis ting",avatar:"Avatar-muligheder"},submit:"Send",needOne:"Vælg mindst ét emne.",sent:"Anmodning sendt!"},
@@ -24,7 +23,6 @@ const texts = {
   ko:{title:"멘토 도움 요청",instructions:"도움이 필요한 주제를 하나 이상 선택하세요.",topics:{how:"세컨드 라이프 작동 방식",exploring:"세상을 탐험하기",meeting:"사람 만나기 / 친구 찾기",freebies:"무료 아이템 찾기",avatar:"아바타 가능성"},submit:"제출",needOne:"최소 하나의 주제를 선택하세요.",sent:"요청이 전송되었습니다!"}
 };
 
-/* 2) Helpers */
 function qpGet(key){
   var s = window.location.search || "";
   var re = new RegExp("[?&]"+key+"=([^&#]*)","i");
@@ -32,24 +30,22 @@ function qpGet(key){
   return m ? decodeURIComponent(m[1].replace(/\+/g," ")) : null;
 }
 
-/* 3) Config (prefer injected values from the LSL wrapper) */
 const injectedHUD = window.HUD_URL || null;
 const queryHUD    = qpGet("cb");
 let   chosenHUD   = injectedHUD || queryHUD || "http://localhost:8000";
-chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://"); // caps must be http
+chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");
 const HUD_URL = chosenHUD;
 
 const NONCE = (qpGet("nonce") || window.CSRF_NONCE || "test-nonce");
 const lang  = (window.LANG || qpGet("lang") || "en").toLowerCase();
 const DEBUG = (/\bdebug=1\b/i.test(location.search) || !!window.DEBUG);
 
-/* 4) Render once DOM is ready */
 function render(){
   const t = texts[lang] || texts.en;
   const app = document.getElementById("app");
   if (!app) return;
 
-  // Reveal app, hide loader if present
+  // show app, hide loader
   app.style.display = "block";
   const loader = document.getElementById("loader");
   if (loader) loader.style.display = "none";
@@ -69,7 +65,6 @@ function render(){
   const form = document.getElementById("helpform");
   const resultEl = document.getElementById("result");
 
-  // optional tiny debug banner
   if (DEBUG && resultEl){
     resultEl.textContent =
       `Origin=${location.origin} | HUD_URL=${HUD_URL} | ` +
@@ -85,7 +80,6 @@ function render(){
       return;
     }
 
-    // Create hidden sink once
     let sink = document.getElementById("hud_sink");
     if (!sink) {
       sink = document.createElement("iframe");
@@ -95,7 +89,6 @@ function render(){
       document.body.appendChild(sink);
     }
 
-    // Classic POST form to the cap; target the hidden iframe
     const f = document.createElement("form");
     f.method = "POST";
     f.action = `${HUD_URL}?action=submit`;
