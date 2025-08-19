@@ -13,11 +13,13 @@ function qpGet(key) {
   return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
 }
 
-const injectedHUD = window.HUD_URL || null;
+
 const queryHUD    = qpGet("cb");
-let   chosenHUD   = injectedHUD || queryHUD || "http://localhost:8000";
-chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");  // cap must be http
+const injectedHUD = window.HUD_URL || null;
+let   chosenHUD   = queryHUD || injectedHUD || "http://localhost:8000";
+chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");
 const HUD_URL = chosenHUD;
+
 
 const NONCE = (qpGet("nonce") || window.CSRF_NONCE || "test-nonce");
 const lang  = (window.LANG || qpGet("lang") || "en").toLowerCase();
