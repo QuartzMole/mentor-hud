@@ -5,6 +5,7 @@
 
 
 // ---- DIAGNOSTIC PARSER + HARD-LOCK TO HTTP ----
+// --- config & helpers ---
 function qpGet(key) {
   var s = window.location.search || "";
   var re = new RegExp("[?&]" + key + "=([^&#]*)", "i");
@@ -12,26 +13,96 @@ function qpGet(key) {
   return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
 }
 
-var injectedHUD = window.HUD_URL || null;   // wrapper-injected (preferred)
-var queryHUD    = qpGet("cb");              // old style via ?cb=
-var chosenHUD   = injectedHUD || queryHUD || "http://localhost:8000";
-
-// HARD RULE: never use https for the cap (prevents ERR_CERT_AUTHORITY_INVALID)
-chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");
-
+const injectedHUD = window.HUD_URL || null;
+const queryHUD    = qpGet("cb");
+let   chosenHUD   = injectedHUD || queryHUD || "http://localhost:8000";
+chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");  // cap must be http
 const HUD_URL = chosenHUD;
-// force precedence: URL ?nonce=  → injected window.CSRF_NONCE → test default
+
 const NONCE = (qpGet("nonce") || window.CSRF_NONCE || "test-nonce");
+const lang  = (window.LANG || qpGet("lang") || "en").toLowerCase();
+const DEBUG = (/\bdebug=1\b/i.test(location.search) || !!window.DEBUG);
 
-const lang    = (window.LANG || qpGet("lang") || "en").toLowerCase();
-
-// ---- tiny on-page debug banner so you can see what it chose ----
+// --- optional tiny debug banner (off by default) ---
 window.addEventListener("DOMContentLoaded", () => {
-  var dbg = document.getElementById("result");
+  if (!DEBUG) return;
+  const dbg = document.getElementById("result");
   if (dbg) {
     dbg.textContent =
       `Origin=${location.origin} | HUD_URL=${HUD_URL} | ` +
       `injectedHUD=${injectedHUD ?? "nil"} | queryHUD=${queryHUD ?? "nil"} | nonce=${NONCE}`;
+  }
+});
+
+// --- render UI (unchanged) ---
+const t   = (texts[lang] || texts.en);
+const app = document.getElementById("app");
+app.innerHTML = `
+  <h1>${t.title}</h1>
+  <p>${t.instructions}</p>
+  <form id="helpform">
+    ${Object.keys(t.topics).map(code =>
+      `<label><input type="checkbox" name="topic" value="${code}"> ${t.topics[code]}</label>`
+    ).join("<br>")}
+    <br><button type="submit">${t.submit}</button>
+  </form>
+  <div id="result"></div>
+`;
+
+// --- submit handler: post to hidden iframe sink (no page navigation) ---
+document.getElementById("helpform").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const resultEl = document.getElementById("result");
+  const topics = [...document.querySelectorAll("input[name=topic]:checked")].map(i => i.value);
+
+  if (topics.length === 0) {
+    resultEl.textContent = "⚠️ " + t.needOne;
+    return;
+  }
+
+  // Create hidden sink once
+  let sink = document.getElementById("hud_sink");
+  if (!sink) {
+    sink = document.createElement("iframe");
+    sink.name = "hud_sink";
+    sink.id = "hud_sink";
+    sink.style.display = "none";
+    document.body.appendChild(sink);
+  }
+
+  // Build a classic POST form targeting the hidden iframe
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = `${HUD_URL}?action=submit`;
+  form.target = "hud_sink";
+  form.acceptCharset = "utf-8";
+
+  const payload = document.createElement("input");
+  payload.type = "hidden";
+  payload.name = "json";
+  payload.value = JSON.stringify({ nonce: NONCE, topics });
+  form.appendChild(payload);
+
+  const echo = document.createElement("input");
+  echo.type = "hidden";
+  echo.name = "echo";
+  echo.value = "ping";
+  form.appendChild(echo);
+
+  document.body.appendChild(form);
+
+  if (DEBUG) resultEl.textContent = `Posting to: ${form.action}`;
+  // When the iframe loads the response (even 204), show success
+  const onLoad = () => {
+    sink.removeEventListener("load", onLoad);
+    resultEl.textContent = t.sent;      // user-facing, localized
+    form.remove();                       // clean up
+  };
+  sink.addEventListener("load", onLoad, { once: true });
+
+  try { form.submit(); }
+  catch (err) {
+    if (DEBUG) resultEl.textContent = "❌ Network error.";
   }
 });
 
