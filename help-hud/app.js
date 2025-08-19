@@ -20,7 +20,9 @@ var chosenHUD   = injectedHUD || queryHUD || "http://localhost:8000";
 chosenHUD = chosenHUD.replace(/^https:\/\//i, "http://");
 
 const HUD_URL = chosenHUD;
-const NONCE   = (window.CSRF_NONCE || qpGet("nonce") || "test-nonce");
+// force precedence: URL ?nonce=  → injected window.CSRF_NONCE → test default
+const NONCE = (qpGet("nonce") || window.CSRF_NONCE || "test-nonce");
+
 const lang    = (window.LANG || qpGet("lang") || "en").toLowerCase();
 
 // ---- tiny on-page debug banner so you can see what it chose ----
