@@ -50,3 +50,8 @@ button:hover {
   font-weight: bold;
   font-size: 20px;
 }
+.success {
+  font-size: 28px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
