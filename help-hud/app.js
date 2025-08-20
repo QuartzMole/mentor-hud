@@ -57,7 +57,7 @@ function render(){
   // show app, hide loader
 // reveal the UI and hide the spinner (after a tiny minimum display time)
    app.style.display = "block";
-   hideLoaderMin(350);
+   hideLoaderMin(700);
 
 
 app.innerHTML = `
