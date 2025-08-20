@@ -262,6 +262,18 @@ const texts = {
   }
 };
 
+function showSuccessScreen() {
+  const t = texts[lang] || texts.en;
+  const appEl = document.getElementById("app");
+  if (appEl) {
+    appEl.innerHTML = `
+      <div class="success" role="status" aria-live="polite">
+        ${t.thanks}
+      </div>
+    `;
+    appEl.style.display = "block";
+  }
+}
 
 function qpGet(key){
   var s = window.location.search || "";
