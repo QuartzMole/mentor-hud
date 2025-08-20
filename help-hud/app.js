@@ -39,6 +39,15 @@ const HUD_URL = chosenHUD;
 const NONCE = (qpGet("nonce") || window.CSRF_NONCE || "test-nonce");
 const lang  = (window.LANG || qpGet("lang") || "en").toLowerCase();
 const DEBUG = (/\bdebug=1\b/i.test(location.search) || !!window.DEBUG);
+// add near the top (after your config is fine)
+function hideLoaderMin(ms = 350) {
+  const loader = document.getElementById("loader");
+  if (!loader) return;
+  const started = window.__HUD_LOADER_TS || Date.now();
+  const elapsed = Date.now() - started;
+  const wait = Math.max(0, ms - elapsed);
+  setTimeout(() => { loader.style.display = "none"; }, wait);
+}
 
 function render(){
   const t = texts[lang] || texts.en;
@@ -46,9 +55,10 @@ function render(){
   if (!app) return;
 
   // show app, hide loader
-  app.style.display = "block";
-  const loader = document.getElementById("loader");
-  if (loader) loader.style.display = "none";
+// reveal the UI and hide the spinner (after a tiny minimum display time)
+   app.style.display = "block";
+   hideLoaderMin(350);
+
 
   app.innerHTML = `
     <h1>${t.title}</h1>
