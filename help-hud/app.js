@@ -40,7 +40,7 @@ const NONCE = (qpGet("nonce") || window.CSRF_NONCE || "test-nonce");
 const lang  = (window.LANG || qpGet("lang") || "en").toLowerCase();
 const DEBUG = (/\bdebug=1\b/i.test(location.search) || !!window.DEBUG);
 // add near the top (after your config is fine)
-function hideLoaderMin(ms = 350) {
+function hideLoaderMin(ms = 700) {
   const loader = document.getElementById("loader");
   if (!loader) return;
   const started = window.__HUD_LOADER_TS || Date.now();
@@ -60,17 +60,18 @@ function render(){
    hideLoaderMin(350);
 
 
-  app.innerHTML = `
-    <h1>${t.title}</h1>
-    <p>${t.instructions}</p>
-    <form id="helpform">
-      ${Object.keys(t.topics).map(code =>
-        `<label><input type="checkbox" name="topic" value="${code}"> ${t.topics[code]}</label>`
-      ).join("<br>")}
-      <br><button type="submit">${t.submit}</button>
-    </form>
-    <div id="result"></div>
-  `;
+app.innerHTML = `
+  <h1>${t.title}</h1>
+  <p id="instructions">${t.instructions}</p>
+  <form id="helpform">
+    ${Object.keys(t.topics).map(code =>
+      `<label><input type="checkbox" name="topic" value="${code}"> ${t.topics[code]}</label>`
+    ).join("<br>")}
+    <br><button type="submit">${t.submit}</button>
+  </form>
+  <div id="result"></div>
+`;
+
 
   const form = document.getElementById("helpform");
   const resultEl = document.getElementById("result");
