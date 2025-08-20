@@ -122,11 +122,22 @@ app.innerHTML = `
 
     if (DEBUG) resultEl.textContent = `Posting to: ${f.action}`;
 
-    const onLoad = () => {
-      sink.removeEventListener("load", onLoad);
-      resultEl.textContent = t.sent;
-      f.remove();
-    };
+const onLoad = () => {
+  sink.removeEventListener("load", onLoad);
+
+  // Swap the whole UI to a success screen in the current language
+  const t = texts[lang] || texts.en;
+  const appEl = document.getElementById("app");
+  if (appEl) {
+    appEl.innerHTML = `<div class="success">${t.thanks}</div>`;
+    appEl.style.display = "block";
+  }
+
+  // (optional) also clear the small result area if present
+  if (resultEl) resultEl.textContent = "";
+  f.remove();
+};
+
     sink.addEventListener("load", onLoad, { once: true });
 
     try { f.submit(); }
