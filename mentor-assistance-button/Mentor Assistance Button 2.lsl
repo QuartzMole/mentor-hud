@@ -104,6 +104,7 @@ state listening{
 	        llRegionSayTo(k, 0, message);
 			return;
 		}
+
 	}
 
 	state_exit()
@@ -117,6 +118,7 @@ state listening{
 		message = llStringTrim(message,STRING_TRIM);
 		if(llStringLength(message)){
 			//process the message
+			state summoningMentor;
 		}
 		else{
 			state default;
@@ -125,6 +127,9 @@ state listening{
 
 	timer()
 	{
+		if(!~llListFindList(llGetAttachedListFiltered(kToucher,[FILTER_FLAGS,FILTER_FLAG_HUDS]),[kHUD])){
+			llResetScript();
+		}
 		if(llGetTime()>120.0){
 			llRegionSayTo(kToucher,0,"Your request has timed out.  If you still need help, please touch the button and try again.");
 			state default;
@@ -139,4 +144,11 @@ state listening{
 	}
 
 
+}
+
+state summoningMentor{
+	state_entry()
+	{
+		
+	}
 }
