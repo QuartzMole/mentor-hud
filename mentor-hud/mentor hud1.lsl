@@ -39,7 +39,7 @@ updatePresence(integer createFirst)
     else
     {
         gLastOp = OP_UPDATE;
-        llUpdateKeyValue(gPresenceKey, payload);
+        llUpdateKeyValue(gPresenceKey, payload, FALSE,"");
     }
 }
 
@@ -131,7 +131,7 @@ default
                     "last_seen",     (string)((integer)llGetUnixTime()),
                     "region_name",   llGetRegionName(),
                     "available",     "true"
-                ]));
+                ]),FALSE,"");
             }
         }
         else if (gLastOp == OP_UPDATE)
